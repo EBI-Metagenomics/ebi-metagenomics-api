@@ -716,6 +716,8 @@ class BaseAnalysisSerializer(ExplicitFieldsModelSerializer,
 
     analysis_summary = serializers.ListField()
 
+    variable_regions = serializers.ListField()
+
     # relationships
 
     sample = serializers.HyperlinkedRelatedField(

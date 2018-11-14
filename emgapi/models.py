@@ -997,7 +997,7 @@ class AnalysisJobManager(models.Manager):
                 'experiment_type',
             ) \
             .prefetch_related(
-                Prefetch('analysis_metadata', queryset=_qs),
+                Prefetch('analysis_annotation', queryset=_qs),
             )
 
     def available(self, request):
@@ -1090,12 +1090,16 @@ class AnalysisJob(models.Model):
         return self.pipeline.release_version
 
     @property
+    def variable_regions(self):
+        return [v.var_val_ucv for v in self.analysis_metadata.all()]
+
+    @property
     def analysis_summary(self):
         return [
             {
                 'key': v.var.var_name,
                 'value': v.var_val_ucv
-            } for v in self.analysis_metadata.all()
+            } for v in self.analysis_annotation.all()
         ]
 
     @property
@@ -1238,15 +1242,38 @@ class AnalysisMetadataVariableNames(models.Model):
 class AnalysisJobAnn(models.Model):
     job = models.ForeignKey(
         AnalysisJob, db_column='JOB_ID',
-        related_name="analysis_metadata")
+        related_name="analysis_annotation")
     units = models.CharField(
         db_column='UNITS', max_length=25, blank=True, null=True)
-    var = models.ForeignKey(AnalysisMetadataVariableNames)
+    var = models.ForeignKey(
+        AnalysisMetadataVariableNames, related_name="analysis_annotation")
     var_val_ucv = models.CharField(
         db_column='VAR_VAL_UCV', max_length=4000, blank=True, null=True)
 
     class Meta:
         db_table = 'ANALYSIS_JOB_ANN'
+        unique_together = (('job', 'var'), ('job', 'var'),)
+
+    def __str__(self):
+        return "%s %s" % (self.job, self.var)
+
+    def multiple_pk(self):
+        return "%s/%s" % (self.var.var_name, self.var_val_ucv)
+
+
+class AnalysisJobMetadata(models.Model):
+    job = models.ForeignKey(
+        AnalysisJob, db_column='JOB_ID',
+        related_name="analysis_metadata")
+    units = models.CharField(
+        db_column='UNITS', max_length=25, blank=True, null=True)
+    var = models.ForeignKey(
+        AnalysisMetadataVariableNames, related_name="analysis_metadata")
+    var_val_ucv = models.CharField(
+        db_column='VAR_VAL_UCV', max_length=4000, blank=True, null=True)
+
+    class Meta:
+        db_table = 'ANALYSIS_JOB_METADATA'
         unique_together = (('job', 'var'), ('job', 'var'),)
 
     def __str__(self):
