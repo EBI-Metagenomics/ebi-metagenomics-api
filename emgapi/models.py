@@ -1091,6 +1091,20 @@ class AssemblyManager(models.Manager):
 
 
 class Assembly(models.Model):
+
+    DNA = "dna"
+    GENOMIC_RNA = "grna"
+    VIRAL_CRNA = "vcrna"
+    MOLECULE_TYPE_CHOICES = (
+        (DNA, "Genomic DNA"),
+        (GENOMIC_RNA, "Genomic RNA"),
+        (VIRAL_CRNA, "Viral cRNA")
+    )
+
+    ASSEMBLY_SOFTWARE_CHOICES = (
+        (SPADES_314, "Spades")
+    )
+
     assembly_id = models.BigAutoField(
         db_column='ASSEMBLY_ID', primary_key=True)
     accession = models.CharField(
@@ -1106,13 +1120,32 @@ class Assembly(models.Model):
         ExperimentType, db_column='EXPERIMENT_TYPE_ID',
         related_name='assemblies',
         on_delete=models.CASCADE, blank=True, null=True)
-
     runs = models.ManyToManyField(
         'Run', through='AssemblyRun', related_name='assemblies', blank=True)
     samples = models.ManyToManyField(
         'Sample', through='AssemblySample', related_name='assemblies',
         blank=True)
-
+    study = models.ForeignKey("emgapi.Study", db_column="STUDY_ID",
+        on_delete=models.SET_NULL, null=True, blank=True)
+    # metadata https://ena-docs.readthedocs.io/en/latest/submit/assembly/metagenome/primary.html?highlight=assembly)
+    assembly_software = models.ForeignKey(
+        "AssemblySoftware", db_column="ASSEMBLY_SOFTWARE_ID", blank=True, null=True)
+    sequencing_platform = models.CharField(
+        db_column="SEQUENCING_PLATFORM", max_length=100, blank=True, null=True)
+    min_gap_length = models.PositiveIntegerField(
+        db_column="ASSEMBLY_SOFTWARE", blank=True, null=True)
+    molecule_type = models.CharField(
+        db_column="MOLECULE_TYPE", blank=True, null=True,
+        choices=MOLECULE_TYPE_CHOICES, default=DNA
+    )
+    coverage = models.PositiveIntegerField(
+        db_column="COVERAGE", blank=True, null=True
+    )
+    description = models.TextField(
+        db_column="DESCRIPTION", blank=True, null=True,
+        max_length=1000 #=> check ENAPRO
+    )
+    
     objects = AssemblyManager()
 
     class Meta:
@@ -1126,6 +1159,20 @@ class Assembly(models.Model):
 
     def __str__(self):
         return self.accession
+
+
+class AssemblySoftware(models.Model):
+    """The assembly program
+    """
+    name = models.CharField(
+        db_column="NAME", max_length=100
+    )
+    version = models.CharField(
+        db_name="VERSION", max_length=50
+    )
+
+    class Meta:
+        db_table = "ASSEMBLY_SOFTWARE"
 
 
 class AssemblyRun(models.Model):
